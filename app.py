@@ -24,11 +24,12 @@ def predict_image(image_np):
     prediction = model.predict(processed_scaled)
     predicted_label = "Real" if prediction[0][0] > 0.5 else "Fake"
     confidence = round(float(prediction[0][0] * 100), 2)
+    st.set_page_config(page_title="EyeDentify", layout="centered")
 
     st.success(f"Prediction: {predicted_label} Face")
     st.metric("Confidence", f"{confidence}%" if predicted_label == "Real" else f"{100 - confidence}%")
 
-st.set_page_config(page_title="EyeDentify", layout="centered")
+
 
 # Sidebar
 st.sidebar.title("EyeDentify")
