@@ -34,7 +34,7 @@ face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fronta
 
 # --- PREPROCESS FACE FOR MODEL ---
 def preprocess_face(face_img):
-    resized = cv2.resize(face_img, (128, 128))  # adjust based on your model
+    resized = cv2.resize(face_img, (32, 32))  # adjust based on your model
     normalized = resized / 255.0
     return np.expand_dims(normalized, axis=0)
 
@@ -58,20 +58,30 @@ if option == "Use Webcam":
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = face_cascade.detectMultiScale(gray, 1.1, 5)
-
         for (x, y, w, h) in faces:
-            face_crop = frame[y:y+h, x:x+w]
-            try:
-                input_face = preprocess_face(face_crop)
-                pred = model.predict(input_face)[0][0]
-                label = "Real" if pred > 0.5 else "Fake"
-                color = (0, 255, 0) if label == "Real" else (0, 0, 255)
-            except:
-                label = "Unknown"
-                color = (255, 255, 0)
+          face_crop = frame[y:y+h, x:x+w]
+        if face_crop.size == 0:
+            continue  # skip empty faces
 
-            cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
-            cv2.putText(frame, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+        try:
+            face_crop = cv2.cvtColor(face_crop, cv2.COLOR_BGR2RGB)  # convert to RGB if model trained on RGB
+            input_face = preprocess_face(face_crop)
+
+            # Ensure correct shape for model input
+            if input_face.shape[1:] != (128, 128, 3):  # or (224, 224, 3) if that was your training input
+                raise ValueError(f"Incorrect input shape: {input_face.shape}")
+
+            pred = model.predict(input_face)[0][0]
+            label = "Real" if pred > 0.5 else "Fake"
+            color = (0, 255, 0) if label == "Real" else (0, 0, 255)
+
+        except Exception as e:
+            label = "Unknown"
+            color = (255, 255, 0)
+            print(f"Prediction failed: {e}")
+
+        cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
+        cv2.putText(frame, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
 
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         FRAME_WINDOW.image(frame_rgb)
