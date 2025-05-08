@@ -6,10 +6,10 @@ from tensorflow.keras.models import load_model # type: ignore
 import tempfile
 import os
 
-# --- PAGE CONFIG ---
+
 st.set_page_config(page_title="Eyedentify", layout="centered")
 
-# --- SIDEBAR ---
+
 with st.sidebar:
     st.title("What is Eyedentify?")
     with st.expander("Click to Learn"):
@@ -21,27 +21,27 @@ with st.sidebar:
             - Supports uploading images and videos for visual inspection
         """)
 
-# --- TITLE ---
+
 st.markdown("<h1 style='text-align: center;'>👁 Eyedentify</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center;'>Real-Time Face Liveness Detection App</h4>", unsafe_allow_html=True)
 st.markdown("<hr>", unsafe_allow_html=True)
 
-# --- LOAD MODEL ---
-model = load_model("model.keras")  # Replace with your actual model path
 
-# --- FACE DETECTOR ---
+model = load_model("model.keras")  
+
+
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-# --- PREPROCESS FACE FOR MODEL ---
+
 def preprocess_face(face_img):
-    resized = cv2.resize(face_img, (32, 32))  # adjust based on your model
+    resized = cv2.resize(face_img, (32, 32))  
     normalized = resized / 255.0
     return np.expand_dims(normalized, axis=0)
 
-# --- CHOOSE MODE ---
+
 option = st.radio("Choose an input method:", ["Use Webcam", "Upload Image", "Upload Video"], horizontal=True)
 
-# --- WEBCAM MODE ---
+
 if option == "Use Webcam":
     col1, col2 = st.columns([1, 2])
     with col1:
@@ -61,14 +61,14 @@ if option == "Use Webcam":
         for (x, y, w, h) in faces:
           face_crop = frame[y:y+h, x:x+w]
         if face_crop.size == 0:
-            continue  # skip empty faces
+            continue  
 
         try:
-            face_crop = cv2.cvtColor(face_crop, cv2.COLOR_BGR2RGB)  # convert to RGB if model trained on RGB
+            face_crop = cv2.cvtColor(face_crop, cv2.COLOR_BGR2RGB)  
             input_face = preprocess_face(face_crop)
 
-            # Ensure correct shape for model input
-            if input_face.shape[1:] != (128, 128, 3):  # or (224, 224, 3) if that was your training input
+            
+            if input_face.shape[1:] != (32, 32, 3): 
                 raise ValueError(f"Incorrect input shape: {input_face.shape}")
 
             pred = model.predict(input_face)[0][0]
@@ -88,7 +88,7 @@ if option == "Use Webcam":
 
     camera.release()
 
-# --- IMAGE UPLOAD ---
+#image upload
 elif option == "Upload Image":
     img_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
     if img_file:
@@ -97,7 +97,7 @@ elif option == "Upload Image":
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         st.image(image_rgb, caption="Uploaded Image", use_container_width=True)
 
-# --- VIDEO UPLOAD ---
+#video upload
 elif option == "Upload Video":
     vid_file = st.file_uploader("Upload a video", type=["mp4", "avi", "mov"])
     if vid_file:
@@ -106,5 +106,5 @@ elif option == "Upload Video":
         st.video(tfile.name)
         st.success("Video uploaded and ready to play.")
 
-# --- FOOTER ---
+#footer
 st.markdown("<hr><p style='text-align: center;'>Made with ❤ by Diyana and Nalin</p>", unsafe_allow_html=True)
