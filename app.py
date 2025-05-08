@@ -1,101 +1,109 @@
-import tensorflow as tf # type: ignore
-import pickle
-from detector.preprocess import preprocess_input
 import streamlit as st
-from PIL import Image
-import numpy as np
 import cv2
-import random
+import numpy as np
+import time
+from datetime import datetime
+import tempfile
+import os
 
-@st.cache_resource
-def load_model():
-    model = tf.keras.models.load_model("model.keras")
-    with open("scaler.pkl", "rb") as f:
-        scaler = pickle.load(f)
-    return model, scaler
+# --- PAGE CONFIG ---
+st.set_page_config(page_title="Eyedentify", layout="centered")
 
-model, scaler = load_model()
-def predict_image(image_np):
-    processed = preprocess_input(image_np)
+# --- SIDEBAR ---
+with st.sidebar:
+    st.title("What is Eyedentify?")
+    with st.expander("Click to Learn"):
+        st.write("""
+            *Eyedentify* is a smart computer vision app that:
+            - Shows live webcam feed
+            - Captures images or records video
+            - Supports uploading images and videos
+            Perfect for real-time identity capture, analysis, and demo purposes!
+        """)
 
-    processed = processed.reshape(1, -1) if len(processed.shape) == 1 else processed
-    processed_scaled = scaler.transform(processed)
+# --- HEADER ---
+st.markdown("<h1 style='text-align: center;'>👁 Eyedentify</h1>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align: center;'>Smart webcam tool for image & video processing</h4>", unsafe_allow_html=True)
+st.markdown("<hr>", unsafe_allow_html=True)
 
-    prediction = model.predict(processed_scaled)
-    predicted_label = "Real" if prediction[0][0] > 0.5 else "Fake"
-    confidence = round(float(prediction[0][0] * 100), 2)
-    st.set_page_config(page_title="EyeDentify", layout="centered")
+# --- SELECTION ---
+option = st.radio("Choose an input method:", ["Use Webcam", "Upload Image", "Upload Video"], horizontal=True)
 
-    st.success(f"Prediction: {predicted_label} Face")
-    st.metric("Confidence", f"{confidence}%" if predicted_label == "Real" else f"{100 - confidence}%")
+# Initialize camera
+def init_camera():
+    cam = cv2.VideoCapture(0)
+    if not cam.isOpened():
+        st.error("Unable to access webcam.")
+        return None
+    return cam
 
+# Webcam Mode
+if option == "Use Webcam":
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        show_cam = st.checkbox("Show Camera")
+    with col2:
+        capture_image = st.button("Capture Image")
+    with col3:
+        record_video = st.checkbox("Record Video")
 
+    FRAME_WINDOW = st.image([])
 
-# Sidebar
-st.sidebar.title("EyeDentify")
-st.sidebar.markdown("*Face Spoof Detection Demo*")
-st.sidebar.markdown("Built with OpenCV + Streamlit")
-# You can add a logo like this if you have one:
-# st.sidebar.image("logo.png", use_column_width=True)
+    camera = init_camera()
+    if camera and show_cam:
+        if record_video:
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            video_filename = f"video_{datetime.now().strftime('%Y%m%d_%H%M%S')}.avi"
+            fps = 20.0
+            width = int(camera.get(3))
+            height = int(camera.get(4))
+            out = cv2.VideoWriter(video_filename, fourcc, fps, (width, height))
+            st.success("Recording started...")
 
-# Title
-st.title(":eyes: EyeDentify - Face Spoof Detection")
-st.markdown("<hr style='border:1px solid gray'/>", unsafe_allow_html=True)
-
-# Description
-with st.expander("What is EyeDentify?"):
-    st.write("""
-    EyeDentify is a face spoof detection app designed to distinguish real faces from spoofed ones (like photos, videos, or masks). 
-    It uses image analysis and AI to make predictions.
-    """)
-
-# Input Method
-input_type = st.radio("Choose input method:", ["Upload Image", "Use Webcam"])
-
-# Fake prediction function (for demo)
-def predict_placeholder(image):
-    result = random.choice(["Real", "Fake"])
-    confidence = round(random.uniform(70, 99), 2)
-    
-    st.success(f"Prediction: {result} Face")
-    st.metric("Confidence", f"{confidence}%")
-
-# Upload Image Flow
-if input_type == "Upload Image":
-    uploaded_file = st.file_uploader("Upload a face image", type=["jpg", "jpeg", "png"])
-
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.image(image, caption="Uploaded Image", use_column_width=True)
-        with col2:
-            if st.button("Predict"):
-                with st.spinner("Analyzing..."):
-                    predict_placeholder(image)
-    else:
-        st.info("Please upload an image to proceed.")
-
-# Webcam Flow
-elif input_type == "Use Webcam":
-    st.info("Click 'Capture' to take a frame from your webcam.")
-    
-    if st.button("Capture"):
-        cap = cv2.VideoCapture(0)
-        ret, frame = cap.read()
-        cap.release()
-
-        if ret:
+        start_time = time.time()
+        while show_cam:
+            ret, frame = camera.read()
+            if not ret:
+                st.warning("Webcam feed unavailable.")
+                break
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            st.image(frame_rgb, caption="Captured Frame", use_column_width=True)
+            FRAME_WINDOW.image(frame_rgb, channels="RGB")
 
-            if st.button("Predict on Captured Image"):
-                with st.spinner("Analyzing..."):
-                    predict_placeholder(frame_rgb)
-        else:
-            st.error("Could not access webcam. Make sure it’s connected and not used by another app.")
+            if capture_image:
+                img_name = f"image_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+                cv2.imwrite(img_name, frame)
+                st.success(f"Image saved as {img_name}")
+                break
 
-# Footer
-st.markdown("---")
-st.markdown("Made with ❤ by Diyana and Nalin", unsafe_allow_html=True)
+            if record_video:
+                out.write(frame)
+
+            # Optional timeout to prevent infinite loop
+            if time.time() - start_time > 20 and not record_video:
+                break
+
+        camera.release()
+        if record_video:
+            out.release()
+            st.success(f"Video saved as {video_filename}")
+
+# Image Upload
+elif option == "Upload Image":
+    uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
+    if uploaded_image:
+        file_bytes = np.asarray(bytearray(uploaded_image.read()), dtype=np.uint8)
+        image = cv2.imdecode(file_bytes, 1)
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        st.image(image_rgb, caption="Uploaded Image", use_container_width=True)
+
+# Video Upload
+elif option == "Upload Video":
+    uploaded_video = st.file_uploader("Upload a video", type=["mp4", "avi", "mov"])
+    if uploaded_video:
+        tfile = tempfile.NamedTemporaryFile(delete=False)
+        tfile.write(uploaded_video.read())
+        st.video(tfile.name)
+        st.success("Video uploaded and ready to play.")
+
+# --- FOOTER ---
+st.markdown("<hr><p style='text-align: center;'>Made with ❤ by Diyana and Nalin </p>", unsafe_allow_html=True)
