@@ -60,8 +60,6 @@ if option == "Use Webcam":
         faces = face_cascade.detectMultiScale(gray, 1.1, 5)
         for (x, y, w, h) in faces:
           face_crop = frame[y:y+h, x:x+w]
-        if face_crop.size == 0:
-            continue  
 
         try:
             face_crop = cv2.cvtColor(face_crop, cv2.COLOR_BGR2RGB)  
