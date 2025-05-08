@@ -1,7 +1,6 @@
 import streamlit as st
 import cv2
 import numpy as np
-from datetime import datetime
 from tensorflow.keras.models import load_model # type: ignore
 import tempfile
 import os
