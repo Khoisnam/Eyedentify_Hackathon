@@ -1,8 +1,32 @@
+import tensorflow as tf # type: ignore
+import pickle
+from detector import preprocess_input
 import streamlit as st
 from PIL import Image
 import numpy as np
 import cv2
 import random
+
+@st.cache_resource
+def load_model():
+    model = tf.keras.models.load_model("model.h5")
+    with open("scaler.pkl", "rb") as f:
+        scaler = pickle.load(f)
+    return model, scaler
+
+model, scaler = load_model()
+def predict_image(image_np):
+    processed = preprocess_input(image_np)
+
+    processed = processed.reshape(1, -1) if len(processed.shape) == 1 else processed
+    processed_scaled = scaler.transform(processed)
+
+    prediction = model.predict(processed_scaled)
+    predicted_label = "Real" if prediction[0][0] > 0.5 else "Fake"
+    confidence = round(float(prediction[0][0] * 100), 2)
+
+    st.success(f"Prediction: {predicted_label} Face")
+    st.metric("Confidence", f"{confidence}%" if predicted_label == "Real" else f"{100 - confidence}%")
 
 st.set_page_config(page_title="EyeDentify", layout="centered")
 
