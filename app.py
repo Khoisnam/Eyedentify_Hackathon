@@ -4,9 +4,13 @@ import numpy as np
 from tensorflow.keras.models import load_model # type: ignore
 import tempfile
 import os
+import time
 
 
 st.set_page_config(page_title="Eyedentify", layout="centered")
+
+if "camera_on" not in st.session_state:
+    st.session_state.camera_on = False
 
 
 with st.sidebar:
@@ -94,6 +98,8 @@ if option == "Use Webcam":
             FRAME_WINDOW.image(frame_rgb)
 
         camera.release()
+        time.sleep(0.1)
+        st.experimental_rerun()
 
 #image upload
 elif option == "Upload Image":
