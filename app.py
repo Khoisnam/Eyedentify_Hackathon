@@ -2,7 +2,7 @@ import streamlit as st
 import cv2
 import numpy as np
 from datetime import datetime
-from tensorflow.keras.models import load_model
+from tensorflow.keras.models import load_model # type: ignore
 import tempfile
 import os
 
@@ -27,7 +27,7 @@ st.markdown("<h4 style='text-align: center;'>Real-Time Face Liveness Detection A
 st.markdown("<hr>", unsafe_allow_html=True)
 
 # --- LOAD MODEL ---
-model = load_model("path_to_your_model.h5")  # Replace with your actual model path
+model = load_model("model.keras")  # Replace with your actual model path
 
 # --- FACE DETECTOR ---
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
@@ -97,4 +97,4 @@ elif option == "Upload Video":
         st.success("Video uploaded and ready to play.")
 
 # --- FOOTER ---
-st.markdown("<hr><p style='text-align: center;'>Made with ❤ by Your Name</p>", unsafe_allow_html=True)
+st.markdown("<hr><p style='text-align: center;'>Made with ❤ by Diyana and Nalin</p>", unsafe_allow_html=True)
