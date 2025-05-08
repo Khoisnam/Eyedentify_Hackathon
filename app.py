@@ -9,7 +9,7 @@ import random
 
 @st.cache_resource
 def load_model():
-    model = tf.keras.models.load_model("model.h5")
+    model = tf.keras.models.load_model("model.keras")
     with open("scaler.pkl", "rb") as f:
         scaler = pickle.load(f)
     return model, scaler
