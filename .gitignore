@@ -18,10 +18,20 @@ venv/
 .DS_Store
 
 # Model and data files (optional)
+<<<<<<< HEAD
 
 
+=======
+*.pkl
+*.h5
+>>>>>>> 16cb1d68c31accda16aca69375b049bf148eb539
 *.pt
 *.csv
 
 # Logs
+<<<<<<< HEAD
 *.log
+=======
+*.log
+.qodo
+>>>>>>> 16cb1d68c31accda16aca69375b049bf148eb539

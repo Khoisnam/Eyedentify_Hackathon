@@ -5,4 +5,9 @@ tensorflow
 opencv-python
 scikit-learn
 imutils
+<<<<<<< HEAD
 matplotlib
+=======
+matplotlib
+streamlit-webrtc
+>>>>>>> 16cb1d68c31accda16aca69375b049bf148eb539
