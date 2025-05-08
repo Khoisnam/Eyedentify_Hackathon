@@ -33,7 +33,7 @@ face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fronta
 
 
 def preprocess_face(face_img):
-    resized = cv2.resize(face_img, (32, 32))  
+    resized = cv2.resize(face_img, (300, 300))  
     normalized = resized / 255.0
     return np.expand_dims(normalized, axis=0)
 
@@ -67,7 +67,7 @@ if option == "Use Webcam":
             input_face = preprocess_face(face_crop)
 
             
-            if input_face.shape[1:] != (32, 32, 3): 
+            if input_face.shape[1:] != (300, 300, 3): 
                 raise ValueError(f"Incorrect input shape: {input_face.shape}")
 
             pred = model.predict(input_face)[0][0]
