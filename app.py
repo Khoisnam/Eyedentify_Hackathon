@@ -1,6 +1,6 @@
 import tensorflow as tf # type: ignore
 import pickle
-from detector import preprocess_input
+from detector.preprocess import preprocess_input
 import streamlit as st
 from PIL import Image
 import numpy as np
