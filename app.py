@@ -1,8 +1,8 @@
 import streamlit as st
 import cv2
 import numpy as np
-import time
 from datetime import datetime
+from tensorflow.keras.models import load_model
 import tempfile
 import os
 
@@ -14,96 +14,87 @@ with st.sidebar:
     st.title("What is Eyedentify?")
     with st.expander("Click to Learn"):
         st.write("""
-            *Eyedentify* is a smart computer vision app that:
-            - Shows live webcam feed
-            - Captures images or records video
-            - Supports uploading images and videos
-            Perfect for real-time identity capture, analysis, and demo purposes!
+            *Eyedentify* is a smart computer vision tool that:
+            - Captures live webcam feed
+            - Detects faces in real-time
+            - Uses a trained model to classify faces as *Real* or *Fake*
+            - Supports uploading images and videos for visual inspection
         """)
 
-# --- HEADER ---
+# --- TITLE ---
 st.markdown("<h1 style='text-align: center;'>👁 Eyedentify</h1>", unsafe_allow_html=True)
-st.markdown("<h4 style='text-align: center;'>Smart webcam tool for image & video processing</h4>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align: center;'>Real-Time Face Liveness Detection App</h4>", unsafe_allow_html=True)
 st.markdown("<hr>", unsafe_allow_html=True)
 
-# --- SELECTION ---
+# --- LOAD MODEL ---
+model = load_model("path_to_your_model.h5")  # Replace with your actual model path
+
+# --- FACE DETECTOR ---
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
+# --- PREPROCESS FACE FOR MODEL ---
+def preprocess_face(face_img):
+    resized = cv2.resize(face_img, (128, 128))  # adjust based on your model
+    normalized = resized / 255.0
+    return np.expand_dims(normalized, axis=0)
+
+# --- CHOOSE MODE ---
 option = st.radio("Choose an input method:", ["Use Webcam", "Upload Image", "Upload Video"], horizontal=True)
 
-# Initialize camera
-def init_camera():
-    cam = cv2.VideoCapture(0)
-    if not cam.isOpened():
-        st.error("Unable to access webcam.")
-        return None
-    return cam
-
-# Webcam Mode
+# --- WEBCAM MODE ---
 if option == "Use Webcam":
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns([1, 2])
     with col1:
-        show_cam = st.checkbox("Show Camera")
-    with col2:
-        capture_image = st.button("Capture Image")
-    with col3:
-        record_video = st.checkbox("Record Video")
+        start_cam = st.checkbox("Start Webcam")
+    FRAME_WINDOW = col2.image([])
 
-    FRAME_WINDOW = st.image([])
+    camera = cv2.VideoCapture(0)
 
-    camera = init_camera()
-    if camera and show_cam:
-        if record_video:
-            fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            video_filename = f"video_{datetime.now().strftime('%Y%m%d_%H%M%S')}.avi"
-            fps = 20.0
-            width = int(camera.get(3))
-            height = int(camera.get(4))
-            out = cv2.VideoWriter(video_filename, fourcc, fps, (width, height))
-            st.success("Recording started...")
+    while start_cam:
+        ret, frame = camera.read()
+        if not ret:
+            st.warning("Unable to access webcam.")
+            break
 
-        start_time = time.time()
-        while show_cam:
-            ret, frame = camera.read()
-            if not ret:
-                st.warning("Webcam feed unavailable.")
-                break
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            FRAME_WINDOW.image(frame_rgb, channels="RGB")
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.1, 5)
 
-            if capture_image:
-                img_name = f"image_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-                cv2.imwrite(img_name, frame)
-                st.success(f"Image saved as {img_name}")
-                break
+        for (x, y, w, h) in faces:
+            face_crop = frame[y:y+h, x:x+w]
+            try:
+                input_face = preprocess_face(face_crop)
+                pred = model.predict(input_face)[0][0]
+                label = "Real" if pred > 0.5 else "Fake"
+                color = (0, 255, 0) if label == "Real" else (0, 0, 255)
+            except:
+                label = "Unknown"
+                color = (255, 255, 0)
 
-            if record_video:
-                out.write(frame)
+            cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
+            cv2.putText(frame, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
 
-            # Optional timeout to prevent infinite loop
-            if time.time() - start_time > 20 and not record_video:
-                break
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        FRAME_WINDOW.image(frame_rgb)
 
-        camera.release()
-        if record_video:
-            out.release()
-            st.success(f"Video saved as {video_filename}")
+    camera.release()
 
-# Image Upload
+# --- IMAGE UPLOAD ---
 elif option == "Upload Image":
-    uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
-    if uploaded_image:
-        file_bytes = np.asarray(bytearray(uploaded_image.read()), dtype=np.uint8)
+    img_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
+    if img_file:
+        file_bytes = np.asarray(bytearray(img_file.read()), dtype=np.uint8)
         image = cv2.imdecode(file_bytes, 1)
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         st.image(image_rgb, caption="Uploaded Image", use_container_width=True)
 
-# Video Upload
+# --- VIDEO UPLOAD ---
 elif option == "Upload Video":
-    uploaded_video = st.file_uploader("Upload a video", type=["mp4", "avi", "mov"])
-    if uploaded_video:
+    vid_file = st.file_uploader("Upload a video", type=["mp4", "avi", "mov"])
+    if vid_file:
         tfile = tempfile.NamedTemporaryFile(delete=False)
-        tfile.write(uploaded_video.read())
+        tfile.write(vid_file.read())
         st.video(tfile.name)
         st.success("Video uploaded and ready to play.")
 
 # --- FOOTER ---
-st.markdown("<hr><p style='text-align: center;'>Made with ❤ by Diyana and Nalin </p>", unsafe_allow_html=True)
+st.markdown("<hr><p style='text-align: center;'>Made with ❤ by Your Name</p>", unsafe_allow_html=True)
