@@ -26,7 +26,8 @@ st.markdown("<h4 style='text-align: center;'>Real-Time Face Liveness Detection A
 st.markdown("<hr>", unsafe_allow_html=True)
 
 
-model = load_model("model.keras")  
+model = load_model("model.keras") 
+model.summary() 
 
 
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
