@@ -41,52 +41,59 @@ def preprocess_face(face_img):
 
 option = st.radio("Choose an input method:", ["Use Webcam", "Upload Image", "Upload Video"], horizontal=True)
 
-
+#webcam
 if option == "Use Webcam":
     col1, col2 = st.columns([1, 2])
     with col1:
-        start_cam = st.checkbox("Start Webcam")
+        if "cam_active" not in st.session_state:
+            st.session_state.cam_active = False
+
+        if st.button("Start Webcam") and not st.session_state.cam_active:
+            st.session_state.cam_active = True
+
+        if st.button("Stop Webcam"):
+            st.session_state.cam_active = False
+
     FRAME_WINDOW = col2.image([])
 
-    camera = cv2.VideoCapture(0)
-
-    while start_cam:
+    if st.session_state.cam_active:
+        camera = cv2.VideoCapture(0)
         ret, frame = camera.read()
+
         if not ret:
             st.warning("Unable to access webcam.")
-            break
+        else:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, 1.1, 5)
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.1, 5)
-        for (x, y, w, h) in faces:
-          face_crop = frame[y:y+h, x:x+w]
-        if face_crop.size == 0:
-            continue  
+            for (x, y, w, h) in faces:
+                face_crop = frame[y:y+h, x:x+w]
+                if face_crop.size == 0:
+                    continue
 
-        try:
-            face_crop = cv2.cvtColor(face_crop, cv2.COLOR_BGR2RGB)  
-            input_face = preprocess_face(face_crop)
+                try:
+                    face_crop = cv2.cvtColor(face_crop, cv2.COLOR_BGR2RGB)
+                    input_face = preprocess_face(face_crop)
 
-            
-            if input_face.shape[1:] != (32, 32, 3): 
-                raise ValueError(f"Incorrect input shape: {input_face.shape}")
+                    if input_face.shape[1:] != (32, 32, 3):
+                        raise ValueError(f"Incorrect input shape: {input_face.shape}")
 
-            pred = model.predict(input_face)[0][0]
-            label = "Real" if pred > 0.5 else "Fake"
-            color = (0, 255, 0) if label == "Real" else (0, 0, 255)
+                    pred = model.predict(input_face)[0][0]
+                    label = "Real" if pred > 0.5 else "Fake"
+                    color = (0, 255, 0) if label == "Real" else (0, 0, 255)
 
-        except Exception as e:
-            label = "Unknown"
-            color = (255, 255, 0)
-            print(f"Prediction failed: {e}")
+                except Exception as e:
+                    label = "Unknown"
+                    color = (255, 255, 0)
+                    st.warning(f"Prediction failed: {e}")
 
-        cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
-        cv2.putText(frame, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+                cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
+                cv2.putText(frame, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
 
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        FRAME_WINDOW.image(frame_rgb)
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            FRAME_WINDOW.image(frame_rgb)
 
-    camera.release()
+        camera.release()
 
 #image upload
 elif option == "Upload Image":
